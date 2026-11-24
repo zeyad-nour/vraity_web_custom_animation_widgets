@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Variety - Precision Kinetic Instrument</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #060A0C; overflow: hidden; font-family: monospace; }
+  </style>
+</head>
+<body>
+
+  <!-- انسخ من أول هنا لـ Elementor -->
+  <div id="vss-radar-stage">
+    <canvas id="vss-radar-canvas"></canvas>
+  </div>
+
+  <style>
+    #vss-radar-stage {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      background: radial-gradient(circle at 68% 50%, #081a24 0%, #060A0C 70%);
+      overflow: hidden;
+    }
+    #vss-radar-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+  </style>
+
+  <script>
+  (function() {
+    const stage = document.getElementById('vss-radar-stage');
+    const canvas = document.getElementById('vss-radar-canvas');
+    if (!stage || !canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    let width, height, dpr;
+    let mouse = { x: 0, y: 0, targetX: 0, targetY: 0 };
+
+    function resize() {
+      const rect = stage.getBoundingClientRect();
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      width = rect.width;
+      height = rect.height;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    mouse.x = mouse.targetX = width * 0.68;
+    mouse.y = mouse.targetY = height * 0.5;
+
+    stage.addEventListener('mousemove', (e) => {
+      const rect = stage.getBoundingClientRect();
+      mouse.targetX = e.clientX - rect.left;
+      mouse.targetY = e.clientY - rect.top;
+    });
+
+    let time = 0;
+
+    function drawTicks(cx, cy, radius, count, len, rot, color) {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(rot);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1;
+      for (let i = 0; i < count; i++) {
+        const a = (i / count) * Math.PI * 2;
+        const isMajor = i % 6 === 0;
+        const inner = radius - (isMajor ? len * 1.8 : len);
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a) * inner, Math.sin(a) * inner);
+        ctx.lineTo(Math.cos(a) * radius, Math.sin(a) * radius);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function render() {
+      time += 0.01;
+      mouse.x += (mouse.targetX - mouse.x) * 0.08;
+      mouse.y += (mouse.targetY - mouse.y) * 0.08;
+
+      ctx.clearRect(0, 0, width, height);
+
+      const cx = width < 768 ? width * 0.5 : width * 0.68;
+      const cy = height * 0.5;
+      const maxR = Math.min(width, height) * 0.36;
+
+      // زاوية الماوس بالنسبة لمركز الآلة
+      const aimAngle = Math.atan2(mouse.y - cy, mouse.x - cx);
+
+      // 1. شعاع رادار مخروطي يتبع الماوس
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(aimAngle);
+      const beamGrad = ctx.createRadialGradient(0, 0, 10, 0, 0, maxR * 1.25);
+      beamGrad.addColorStop(0, 'rgba(10, 184, 236, 0.25)');
+      beamGrad.addColorStop(1, 'rgba(10, 184, 236, 0)');
+      ctx.fillStyle = beamGrad;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.arc(0, 0, maxR * 1.25, -0.28, 0.28);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+
+      // 2. الحلقات الهندسية المدرجة
+      drawTicks(cx, cy, maxR, 72, 7, time * 0.25, 'rgba(10, 184, 236, 0.35)');
+      drawTicks(cx, cy, maxR * 0.72, 48, 5, -time * 0.4 + aimAngle * 0.3, 'rgba(255, 255, 255, 0.18)');
+      drawTicks(cx, cy, maxR * 0.44, 36, 4, time * 0.6, 'rgba(10, 184, 236, 0.55)');
+
+      // 3. دوائر متصلة ومتقطعة
+      ctx.beginPath();
+      ctx.arc(cx, cy, maxR * 0.86, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(10, 184, 236, 0.14)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // 4. مثلثات شعار Variety في قلب البوصلة بتتجه للماوس
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(aimAngle + Math.PI * 0.5);
+      ctx.beginPath();
+      ctx.moveTo(0, -maxR * 0.26);
+      ctx.lineTo(maxR * 0.2, maxR * 0.16);
+      ctx.lineTo(0, maxR * 0.06);
+      ctx.lineTo(-maxR * 0.2, maxR * 0.16);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(10, 184, 236, 0.22)';
+      ctx.strokeStyle = '#0AB8EC';
+      ctx.lineWidth = 1.5;
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+
+      // 5. مؤشر استهداف دقيق عند الماوس (Crosshair)
+      ctx.save();
+      ctx.strokeStyle = 'rgba(10, 184, 236, 0.65)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(mouse.x, mouse.y, 14, 0, Math.PI * 2);
+      ctx.moveTo(mouse.x - 22, mouse.y); ctx.lineTo(mouse.x - 8, mouse.y);
+      ctx.moveTo(mouse.x + 8, mouse.y); ctx.lineTo(mouse.x + 22, mouse.y);
+      ctx.moveTo(mouse.x, mouse.y - 22); ctx.lineTo(mouse.x, mouse.y - 8);
+      ctx.moveTo(mouse.x, mouse.y + 8); ctx.lineTo(mouse.x, mouse.y + 22);
+      ctx.stroke();
+
+      // إحداثيات رقمية حية جنب الماوس
+      const deg = Math.round(((aimAngle * 180 / Math.PI) + 360) % 360);
+      ctx.fillStyle = 'rgba(10, 184, 236, 0.85)';
+      ctx.font = '11px monospace';
+      ctx.fillText(`VEC // ${deg}°`, mouse.x + 22, mouse.y - 14);
+      ctx.restore();
+
+      requestAnimationFrame(render);
+    }
+
+    render();
+  })();
+  </script>
+
+</body>
+</html>
