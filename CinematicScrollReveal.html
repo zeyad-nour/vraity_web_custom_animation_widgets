@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+
+body{
+    background:#050b12;
+    color:white;
+    font-family:Arial;
+}
+
+.spacer{
+    height:100vh;
+    display:grid;
+    place-items:center;
+    color:#0ab8ec;
+    font-size:35px;
+}
+
+.reveal-section{
+    height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    overflow:hidden;
+    position:relative;
+}
+
+.reveal-box{
+    width:75%;
+    height:65%;
+    background:
+    radial-gradient(circle at 70% 30%,#087ba8,#071622 55%,#03080d);
+    border-radius:20px;
+    transform:scale(.65);
+    opacity:.3;
+    transition:transform .15s linear,opacity .15s linear;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+}
+
+.reveal-box h1{
+    font-size:clamp(35px,6vw,75px);
+    text-align:center;
+}
+
+.reveal-box span{color:#0ab8ec}
+</style>
+</head>
+
+<body>
+
+<div class="spacer">Scroll Down ↓</div>
+
+<section class="reveal-section" id="reveal">
+
+<div class="reveal-box" id="box">
+<h1>Turning Ideas<br>Into <span>Experiences.</span></h1>
+</div>
+
+</section>
+
+<div class="spacer">Explore More</div>
+
+<script>
+const section=document.getElementById("reveal");
+const box=document.getElementById("box");
+
+window.addEventListener("scroll",()=>{
+
+const rect=section.getBoundingClientRect();
+const progress=1-rect.top/window.innerHeight;
+
+const value=Math.max(0,Math.min(1,progress));
+
+const scale=.65+value*.35;
+const opacity=.3+value*.7;
+
+box.style.transform=`scale(${scale})`;
+box.style.opacity=opacity;
+
+},{passive:true});
+</script>
+
+</body>
+</html>
