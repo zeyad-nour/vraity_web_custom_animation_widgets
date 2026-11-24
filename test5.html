@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Variety - Kinetic Crystal Shards</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: #060A0C;
+      color: #ffffff;
+      font-family: 'Poppins', system-ui, sans-serif;
+      overflow-x: hidden;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- هذا الجزء هو اللي هتاخده نسخ ولصق جوه HTML Widget في Elementor -->
+  <div id="vss-shards-stage">
+    <canvas id="vss-shards-canvas"></canvas>
+  </div>
+
+  <style>
+    #vss-shards-stage {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      background: radial-gradient(circle at 70% 50%, #091d28 0%, #060A0C 68%);
+      overflow: hidden;
+    }
+    #vss-shards-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+  </style>
+
+  <script>
+  (function() {
+    const stage = document.getElementById('vss-shards-stage');
+    const canvas = document.getElementById('vss-shards-canvas');
+    if (!stage || !canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    let width, height, dpr;
+    let mouse = { x: 0, y: 0, targetX: 0, targetY: 0 };
+
+    function resize() {
+      const rect = stage.getBoundingClientRect();
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      width = rect.width;
+      height = rect.height;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    window.addEventListener('mousemove', (e) => {
+      const rect = stage.getBoundingClientRect();
+      mouse.targetX = ((e.clientX - rect.left) / (width || 1) - 0.5) * 2;
+      mouse.targetY = ((e.clientY - rect.top) / (height || 1) - 0.5) * 2;
+    });
+
+    // توليد 18 منشور هندسي حاد (مستوحى من زوايا شعار Variety)
+    const shards = Array.from({ length: 18 }, (_, i) => {
+      const isMainCluster = i < 10;
+      return {
+        x: isMainCluster ? (Math.random() - 0.5) * 320 : (Math.random() - 0.5) * 950,
+        y: isMainCluster ? (Math.random() - 0.5) * 320 : (Math.random() - 0.5) * 650,
+        z: (Math.random() - 0.5) * 400,
+        size: isMainCluster ? 45 + Math.random() * 65 : 18 + Math.random() * 32,
+        rot: Math.random() * Math.PI * 2,
+        rotSpeed: (Math.random() - 0.5) * 0.008,
+        floatOffset: Math.random() * Math.PI * 2,
+        parallax: 15 + Math.random() * 45,
+        isCyan: i % 3 !== 0
+      };
+    });
+
+    let time = 0;
+
+    function drawShard(s, centerX, centerY) {
+      const floatY = Math.sin(time * 0.02 + s.floatOffset) * 14;
+      const px = centerX + s.x + mouse.x * s.parallax;
+      const py = centerY + s.y + floatY + mouse.y * s.parallax;
+      const angle = s.rot + time * s.rotSpeed + mouse.x * 0.25;
+
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.rotate(angle);
+
+      const sz = s.size;
+      // شكل مثلث/منشور حاد غير متماثل يشبه شظايا اللوجو
+      const p1 = { x: 0, y: -sz };
+      const p2 = { x: sz * 0.85, y: sz * 0.55 };
+      const p3 = { x: -sz * 0.65, y: sz * 0.75 };
+      const inner = { x: sz * 0.1, y: sz * 0.15 }; // نقطة ارتكاز ثلاثية الأبعاد
+
+      // الوجه الأول (مضيء)
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.lineTo(inner.x, inner.y);
+      ctx.closePath();
+      ctx.fillStyle = s.isCyan ? 'rgba(10, 184, 236, 0.28)' : 'rgba(255, 255, 255, 0.09)';
+      ctx.fill();
+
+      // الوجه الثاني (ظل عميق)
+      ctx.beginPath();
+      ctx.moveTo(p2.x, p2.y);
+      ctx.lineTo(p3.x, p3.y);
+      ctx.lineTo(inner.x, inner.y);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(4, 14, 20, 0.75)';
+      ctx.fill();
+
+      // الوجه الثالث (انعكاس متوسط)
+      ctx.beginPath();
+      ctx.moveTo(p3.x, p3.y);
+      ctx.lineTo(p1.x, p1.y);
+      ctx.lineTo(inner.x, inner.y);
+      ctx.closePath();
+      ctx.fillStyle = s.isCyan ? 'rgba(10, 184, 236, 0.12)' : 'rgba(255, 255, 255, 0.04)';
+      ctx.fill();
+
+      // الحواف الليزرية الحادة
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.lineTo(p3.x, p3.y);
+      ctx.closePath();
+      ctx.lineWidth = 1.1;
+      ctx.strokeStyle = s.isCyan ? 'rgba(10, 184, 236, 0.65)' : 'rgba(255, 255, 255, 0.22)';
+      ctx.shadowColor = s.isCyan ? 'rgba(10, 184, 236, 0.5)' : 'transparent';
+      ctx.shadowBlur = 15;
+      ctx.stroke();
+
+      // خط الحافة الداخلية للبعد الثلاثي
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(inner.x, inner.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.moveTo(inner.x, inner.y);
+      ctx.lineTo(p3.x, p3.y);
+      ctx.strokeStyle = 'rgba(180, 240, 255, 0.25)';
+      ctx.lineWidth = 0.7;
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    function render() {
+      time++;
+      mouse.x += (mouse.targetX - mouse.x) * 0.06;
+      mouse.y += (mouse.targetY - mouse.y) * 0.06;
+
+      ctx.clearRect(0, 0, width, height);
+
+      const centerX = width < 768 ? width * 0.5 : width * 0.72;
+      const centerY = height * 0.5;
+
+      // هالة ضوء خلفية ناعمة
+      const glow = ctx.createRadialGradient(centerX, centerY, 20, centerX, centerY, 380);
+      glow.addColorStop(0, 'rgba(10, 184, 236, 0.22)');
+      glow.addColorStop(1, 'rgba(6, 10, 12, 0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, width, height);
+
+      shards.forEach(s => drawShard(s, centerX, centerY));
+
+      requestAnimationFrame(render);
+    }
+
+    render();
+  })();
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,290 @@
+<div id="vss-vortex-stage">
+  <canvas id="vss-vortex-canvas"></canvas>
+  <div id="vss-3d-cards-layer"></div>
+</div>
+
+<style>
+  /* إخفاء ويدجت الصور الأصلي بتاع إليمنتور بعد سحب الصور منه */
+  .vss-canvas-media {
+    display: none !important;
+  }
+
+  #vss-vortex-stage {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+    perspective: 1200px;
+  }
+
+  #vss-vortex-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  #vss-3d-cards-layer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+    pointer-events: none;
+  }
+
+  .vss-vortex-card {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 240px;
+    height: 155px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(10, 184, 236, 0.45);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 25px rgba(10, 184, 236, 0.25);
+    background: #060a0c;
+    will-change: transform, opacity;
+    transition: border-color 0.3s ease;
+  }
+
+  .vss-vortex-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    opacity: 0.88;
+  }
+
+  .vss-vortex-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(10, 184, 236, 0.22) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  /* رفع كل عناصر إليمنتور النصية فوق الأنيميشن */
+  .elementor-element:has(#vss-vortex-stage) > .elementor-element:not(:has(#vss-vortex-stage)),
+  .elementor-element:has(#vss-vortex-stage) .e-con-inner > .elementor-element:not(:has(#vss-vortex-stage)) {
+    position: relative;
+    z-index: 3;
+  }
+
+  @media (max-width: 767px) {
+    .vss-vortex-card {
+      width: 150px;
+      height: 100px;
+    }
+  }
+</style>
+
+<script>
+(function() {
+  const stage = document.getElementById('vss-vortex-stage');
+  const canvas = document.getElementById('vss-vortex-canvas');
+  const cardsLayer = document.getElementById('vss-3d-cards-layer');
+  if (!stage || !canvas || !cardsLayer) return;
+
+  const ctx = canvas.getContext('2d');
+  let width, height, dpr;
+  let mouse = { x: 0, y: 0, targetX: 0, targetY: 0 };
+  let scrollProgress = 0;
+
+  function resize() {
+    const rect = stage.getBoundingClientRect();
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    width = rect.width;
+    height = rect.height;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  window.addEventListener('resize', resize);
+  resize();
+
+  window.addEventListener('mousemove', (e) => {
+    const rect = stage.getBoundingClientRect();
+    mouse.targetX = ((e.clientX - rect.left) / (width || 1) - 0.5) * 2;
+    mouse.targetY = ((e.clientY - rect.top) / (height || 1) - 0.5) * 2;
+  }, { passive: true });
+
+  window.addEventListener('scroll', () => {
+    const rect = stage.getBoundingClientRect();
+    const viewH = window.innerHeight || 1;
+    // حساب تقدم السكرول من لحظة دخول السكشن لحد خروجه
+    scrollProgress = Math.max(-1, Math.min(1, (viewH * 0.5 - (rect.top + rect.height * 0.5)) / viewH));
+  }, { passive: true });
+
+  // 1. بناء شبكة الجزيئات ثلاثية الأبعاد (3D Neural Vortex Nodes)
+  const NODE_COUNT = 140;
+  const nodes = Array.from({ length: NODE_COUNT }, (_, i) => {
+    const theta = (i / NODE_COUNT) * Math.PI * 6; // 3 لفات حلزونية
+    const radius = 140 + (i / NODE_COUNT) * 380;
+    return {
+      angle: theta,
+      baseRadius: radius,
+      yOffset: ((i % 20) - 10) * 26,
+      speed: 0.003 + (i % 5) * 0.0008,
+      size: 1.4 + (i % 3) * 0.9,
+      isAccent: i % 4 !== 0 // 75% أزرق سماوي و 25% أبيض
+    };
+  });
+
+  // 2. سحب الصور من ويدجت إليمنتور وتحويلها لكروت 3D تسبح في المدار
+  let cardItems = [];
+
+  function initElementorCards() {
+    const mediaSource = document.querySelector('.vss-canvas-media');
+    if (!mediaSource) return;
+
+    const imgs = Array.from(mediaSource.querySelectorAll('img'))
+      .map(img => img.getAttribute('data-src') || img.src)
+      .filter(Boolean);
+
+    if (imgs.length === 0) return;
+
+    cardsLayer.innerHTML = '';
+    cardItems = imgs.map((src, idx) => {
+      const card = document.createElement('div');
+      card.className = 'vss-vortex-card';
+      card.innerHTML = `<img src="${src}" alt="Variety Visual ${idx + 1}" />`;
+      cardsLayer.appendChild(card);
+
+      return {
+        el: card,
+        baseAngle: (idx / imgs.length) * Math.PI * 2,
+        orbitRx: 0.34, // نسبة العرض
+        orbitRy: 0.24, // نسبة الارتفاع
+        zDepth: 160
+      };
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initElementorCards);
+  } else {
+    initElementorCards();
+  }
+  setTimeout(initElementorCards, 900);
+
+  let time = 0;
+
+  function render() {
+    time += 1;
+    mouse.x += (mouse.targetX - mouse.x) * 0.06;
+    mouse.y += (mouse.targetY - mouse.y) * 0.06;
+
+    ctx.clearRect(0, 0, width, height);
+
+    const cx = width * 0.5 + mouse.x * 35;
+    const cy = height * 0.5 + mouse.y * 25;
+    const fov = 750;
+    const rotY = time * 0.004 + mouse.x * 0.45 + scrollProgress * 1.4;
+    const rotX = 0.32 + mouse.y * 0.28 + scrollProgress * 0.35;
+
+    const cosY = Math.cos(rotY);
+    const sinY = Math.sin(rotY);
+    const cosX = Math.cos(rotX);
+    const sinX = Math.sin(rotX);
+
+    // إسقاط النقاط في الفضاء ثلاثي الأبعاد
+    const projected = nodes.map((n) => {
+      const currentAngle = n.angle + time * n.speed;
+      const expand = 1 + Math.abs(scrollProgress) * 0.35;
+      const x0 = Math.cos(currentAngle) * n.baseRadius * expand;
+      const z0 = Math.sin(currentAngle) * n.baseRadius * expand;
+      const y0 = n.yOffset + Math.sin(currentAngle * 2 + time * 0.02) * 28;
+
+      // دوران حول Y
+      const x1 = x0 * cosY - z0 * sinY;
+      const z1 = z0 * cosY + x0 * sinY;
+
+      // دوران حول X
+      const y2 = y0 * cosX - z1 * sinX;
+      const z2 = z1 * cosX + y0 * sinX;
+
+      const scale = fov / (fov + z2 + 450);
+      return {
+        x: cx + x1 * scale,
+        y: cy + y2 * scale,
+        z: z2,
+        scale: scale,
+        size: n.size * scale,
+        isAccent: n.isAccent
+      };
+    });
+
+    // رسم خطوط الربط العصبية بين النقاط القريبة (Constellation Mesh)
+    ctx.lineWidth = 0.8;
+    for (let i = 0; i < projected.length; i++) {
+      const p1 = projected[i];
+      if (p1.scale <= 0) continue;
+
+      for (let j = i + 1; j < i + 6 && j < projected.length; j++) {
+        const p2 = projected[j];
+        const dx = p1.x - p2.x;
+        const dy = p1.y - p2.y;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist < 115) {
+          const alpha = (1 - dist / 115) * 0.38 * Math.min(1, p1.scale);
+          ctx.beginPath();
+          ctx.moveTo(p1.x, p1.y);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.strokeStyle = `rgba(10, 184, 236, ${alpha})`;
+          ctx.stroke();
+        }
+      }
+    }
+
+    // رسم الجزيئات المضيئة
+    projected.forEach((p) => {
+      if (p.scale <= 0) return;
+      const alpha = Math.max(0.12, Math.min(0.95, p.scale * 0.85));
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, Math.max(0.8, p.size), 0, Math.PI * 2);
+      if (p.isAccent) {
+        ctx.fillStyle = `rgba(10, 184, 236, ${alpha})`;
+        ctx.shadowColor = '#0AB8EC';
+        ctx.shadowBlur = 10 * p.scale;
+      } else {
+        ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.7})`;
+        ctx.shadowBlur = 0;
+      }
+      ctx.fill();
+    });
+
+    // 3. تحريك كروت صور إليمنتور في مدار 3D حقيقي حول المركز
+    if (cardItems.length > 0) {
+      const rx = width * (width < 768 ? 0.32 : 0.35);
+      const ry = height * (width < 768 ? 0.24 : 0.25);
+
+      cardItems.forEach((item) => {
+        const a = item.baseAngle + time * 0.0045 + mouse.x * 0.5 + scrollProgress * 1.2;
+        const x = Math.cos(a) * rx;
+        const z = Math.sin(a) * item.zDepth;
+        const y = Math.sin(a * 1.5) * ry + mouse.y * 30;
+
+        const scale = fov / (fov + z + 220);
+        const opacity = Math.max(0.22, Math.min(0.95, (z + item.zDepth) / (item.zDepth * 2) * 0.75 + 0.25));
+        const tiltY = Math.cos(a) * -18;
+        const tiltX = mouse.y * -10;
+
+        item.el.style.transform = `translate3d(calc(-50% + ${x}px), calc(-50% + ${y}px), ${z}px) scale(${scale}) rotateY(${tiltY}deg) rotateX(${tiltX}deg)`;
+        item.el.style.opacity = opacity.toFixed(2);
+        item.el.style.zIndex = Math.round(z + 500);
+      });
+    }
+
+    requestAnimationFrame(render);
+  }
+
+  render();
+})();
+</script>

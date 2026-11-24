@@ -1,0 +1,220 @@
+<div id="vss-hero-canvas-wrap">
+  <canvas id="vss-hero-canvas"></canvas>
+</div>
+
+<style>
+  #vss-hero-canvas-wrap {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+  }
+  #vss-hero-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  /* ضمان إن عناصر إليمنتور النصية دايماً فوق الأنيميشن */
+  .elementor-element:has(#vss-hero-canvas-wrap) > .elementor-element:not(:has(#vss-hero-canvas-wrap)),
+  .elementor-element:has(#vss-hero-canvas-wrap) .e-con-inner > .elementor-element:not(:has(#vss-hero-canvas-wrap)) {
+    position: relative;
+    z-index: 2;
+  }
+</style>
+
+<script>
+(function() {
+  const canvas = document.getElementById('vss-hero-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  let width, height, dpr;
+  let mouse = { x: 0, y: 0, targetX: 0, targetY: 0 };
+  let scrollProgress = 0;
+
+  function resize() {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    width = rect.width;
+    height = rect.height;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  window.addEventListener('resize', resize);
+  resize();
+
+  window.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    mouse.targetX = ((e.clientX - rect.left) / width - 0.5) * 2;
+    mouse.targetY = ((e.clientY - rect.top) / height - 0.5) * 2;
+  });
+
+  window.addEventListener('scroll', () => {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    scrollProgress = Math.max(0, Math.min(1, -rect.top / (rect.height || 1)));
+  }, { passive: true });
+
+  // جزيئات المدار التكنولوجي
+  const particles = Array.from({ length: 42 }, (_, i) => ({
+    angle: (i / 42) * Math.PI * 2,
+    radiusFactor: 0.72 + Math.random() * 0.55,
+    speed: (0.0015 + Math.random() * 0.002) * (i % 2 === 0 ? 1 : -1),
+    size: 1.2 + Math.random() * 2,
+    alpha: 0.25 + Math.random() * 0.65,
+    tilt: (Math.random() - 0.5) * 0.6
+  }));
+
+  let time = 0;
+
+  function drawPrismWing(cx, cy, scale, rotX, rotY, timeOffset) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    
+    const pulse = Math.sin(time * 0.025 + timeOffset) * 8;
+    const skewX = rotX * 25;
+    const skewY = rotY * 25;
+
+    // الجناح الهندسي المستوحى من شعار Variety
+    ctx.beginPath();
+    ctx.moveTo(-145 * scale + skewX, -35 * scale + pulse);
+    ctx.lineTo(0 + skewX * 0.5, 45 * scale - pulse * 0.5);
+    ctx.lineTo(145 * scale + skewX, -35 * scale + pulse);
+    ctx.lineTo(55 * scale + skewX * 0.8, 15 * scale);
+    ctx.lineTo(0, 85 * scale + skewY);
+    ctx.lineTo(-55 * scale + skewX * 0.8, 15 * scale);
+    ctx.closePath();
+
+    const grad = ctx.createLinearGradient(-150 * scale, -50 * scale, 150 * scale, 90 * scale);
+    grad.addColorStop(0, 'rgba(10, 184, 236, 0.85)');
+    grad.addColorStop(0.5, 'rgba(10, 184, 236, 0.25)');
+    grad.addColorStop(1, 'rgba(10, 184, 236, 0.9)');
+
+    ctx.fillStyle = grad;
+    ctx.shadowColor = 'rgba(10, 184, 236, 0.5)';
+    ctx.shadowBlur = 28;
+    ctx.fill();
+
+    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = 'rgba(130, 230, 255, 0.65)';
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function render() {
+    time++;
+    // Damping ناعم لحركة الماوس
+    mouse.x += (mouse.targetX - mouse.x) * 0.05;
+    mouse.y += (mouse.targetY - mouse.y) * 0.05;
+
+    ctx.clearRect(0, 0, width, height);
+
+    const isMobile = width < 768;
+    const centerX = isMobile ? width * 0.5 : width * 0.74 + mouse.x * 24;
+    const centerY = isMobile ? height * 0.65 : height * 0.54 + mouse.y * 20 - scrollProgress * 90;
+    const baseRadius = isMobile ? Math.min(width, height) * 0.34 : Math.min(width, height) * 0.33;
+    const fadeOut = 1 - scrollProgress * 0.85;
+
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, fadeOut);
+
+    // 1. الهالة الخلفية العميقة (Ambient Core Glow)
+    const ambientGrad = ctx.createRadialGradient(
+      centerX - baseRadius * 0.25,
+      centerY - baseRadius * 0.25,
+      baseRadius * 0.05,
+      centerX,
+      centerY,
+      baseRadius * 1.35
+    );
+    ambientGrad.addColorStop(0, 'rgba(10, 184, 236, 0.26)');
+    ambientGrad.addColorStop(0.45, 'rgba(7, 65, 92, 0.16)');
+    ambientGrad.addColorStop(1, 'rgba(6, 10, 12, 0)');
+
+    ctx.fillStyle = ambientGrad;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, baseRadius * 1.35, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 2. الكرة الزجاجية المظلمة (Dark Glass Sphere)
+    const sphereGrad = ctx.createRadialGradient(
+      centerX - baseRadius * 0.35 + mouse.x * 15,
+      centerY - baseRadius * 0.35 + mouse.y * 15,
+      baseRadius * 0.08,
+      centerX,
+      centerY,
+      baseRadius
+    );
+    sphereGrad.addColorStop(0, 'rgba(18, 145, 190, 0.35)');
+    sphereGrad.addColorStop(0.55, 'rgba(8, 32, 46, 0.65)');
+    sphereGrad.addColorStop(1, 'rgba(4, 10, 14, 0.92)');
+
+    ctx.fillStyle = sphereGrad;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, baseRadius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // إطار زجاجي رفيع للكرة
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(10, 184, 236, 0.22)';
+    ctx.stroke();
+
+    // 3. المدارات الهندسية المائلة (Orbital Rings)
+    [0, 1].forEach((idx) => {
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      ctx.rotate((idx === 0 ? -0.42 : 0.58) + Math.sin(time * 0.005) * 0.06 + mouse.x * 0.08);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, baseRadius * (1.28 + idx * 0.14), baseRadius * (0.48 + idx * 0.1), 0, 0, Math.PI * 2);
+      ctx.strokeStyle = idx === 0 ? 'rgba(10, 184, 236, 0.24)' : 'rgba(255, 255, 255, 0.08)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // نقطة ضوء بتجري على المدار
+      const orbAngle = time * (idx === 0 ? 0.014 : -0.011) + idx * 2;
+      const ox = Math.cos(orbAngle) * baseRadius * (1.28 + idx * 0.14);
+      const oy = Math.sin(orbAngle) * baseRadius * (0.48 + idx * 0.1);
+      
+      ctx.beginPath();
+      ctx.arc(ox, oy, 3, 0, Math.PI * 2);
+      ctx.fillStyle = '#0AB8EC';
+      ctx.shadowColor = '#0AB8EC';
+      ctx.shadowBlur = 12;
+      ctx.fill();
+      ctx.restore();
+    });
+
+    // 4. المجسم الهندسي المزدوج لشعار Variety في المنتصف
+    const scale = baseRadius / 230;
+    // الطبقة الخلفية الشفافة (عمق ثلاثي الأبعاد)
+    ctx.save();
+    ctx.globalAlpha = 0.28 * fadeOut;
+    drawPrismWing(centerX - mouse.x * 14, centerY - 22 * scale - mouse.y * 14, scale * 0.92, -mouse.x, -mouse.y, 1.5);
+    ctx.restore();
+
+    // الطبقة الأمامية المضيئة
+    drawPrismWing(centerX + mouse.x * 12, centerY + 12 * scale + mouse.y * 12, scale, mouse.x, mouse.y, 0);
+
+    // 5. جزيئات دقيقة سابحة حوالين الكرة
+    particles.forEach((p) => {
+      p.angle += p.speed;
+      const px = centerX + Math.cos(p.angle) * baseRadius * p.radiusFactor;
+      const py = centerY + Math.sin(p.angle) * baseRadius * (p.radiusFactor * 0.65) + Math.sin(p.angle * 2) * 18;
+      
+      ctx.beginPath();
+      ctx.arc(px, py, p.size, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(10, 184, 236, ${p.alpha * fadeOut})`;
+      ctx.fill();
+    });
+
+    ctx.restore();
+    requestAnimationFrame(render);
+  }
+
+  render();
+})();
+</script>

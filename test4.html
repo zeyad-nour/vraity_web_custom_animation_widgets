@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Variety - 3D Cyber Topography</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: #060A0C;
+      color: #ffffff;
+      font-family: 'Poppins', system-ui, sans-serif;
+      overflow-x: hidden;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- هذا الجزء هو اللي هتاخده نسخ ولصق جوه HTML Widget في Elementor -->
+  <div id="vss-topo-container">
+    <canvas id="vss-topo-canvas"></canvas>
+    <div class="vss-topo-vignette"></div>
+  </div>
+
+  <style>
+    #vss-topo-container {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      background: radial-gradient(circle at 50% 45%, #0a1922 0%, #060A0C 75%);
+      overflow: hidden;
+    }
+    #vss-topo-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .vss-topo-vignette {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at center, transparent 40%, #060A0C 98%);
+      pointer-events: none;
+    }
+  </style>
+
+  <script>
+  (function() {
+    const container = document.getElementById('vss-topo-container');
+    const canvas = document.getElementById('vss-topo-canvas');
+    if (!container || !canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    let width, height, dpr;
+    let mouse = { x: -9999, y: -9999, targetX: -9999, targetY: -9999 };
+
+    function resize() {
+      const rect = container.getBoundingClientRect();
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      width = rect.width;
+      height = rect.height;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    container.addEventListener('mousemove', (e) => {
+      const rect = container.getBoundingClientRect();
+      mouse.targetX = e.clientX - rect.left;
+      mouse.targetY = e.clientY - rect.top;
+    });
+
+    container.addEventListener('mouseleave', () => {
+      mouse.targetX = -9999;
+      mouse.targetY = -9999;
+    });
+
+    let time = 0;
+
+    function render() {
+      time += 0.018;
+      if (mouse.targetX !== -9999) {
+        if (mouse.x === -9999) { mouse.x = mouse.targetX; mouse.y = mouse.targetY; }
+        mouse.x += (mouse.targetX - mouse.x) * 0.1;
+        mouse.y += (mouse.targetY - mouse.y) * 0.1;
+      }
+
+      ctx.clearRect(0, 0, width, height);
+
+      const cols = Math.floor(width / 38) + 2;
+      const rows = Math.floor(height / 38) + 2;
+      const spacingX = width / (cols - 1);
+      const spacingY = height / (rows - 1);
+
+      const grid = [];
+
+      // حساب نقاط الشبكة المتموجة + تأثير جذب/رفع الماوس
+      for (let r = 0; r < rows; r++) {
+        const rowPoints = [];
+        for (let c = 0; c < cols; c++) {
+          const baseX = c * spacingX;
+          const baseY = r * spacingY;
+
+          // موجة تضاريس ناعمة
+          const wave = Math.sin(c * 0.28 + time) * 14 + Math.cos(r * 0.28 + time * 0.8) * 14;
+
+          // تفاعل الماوس (رفع الشبكة زي المغناطيس)
+          const dx = baseX - mouse.x;
+          const dy = baseY - mouse.y;
+          const dist = Math.hypot(dx, dy);
+          const maxDist = 260;
+          let pull = 0;
+          let glow = 0;
+
+          if (dist < maxDist) {
+            const factor = 1 - dist / maxDist;
+            const smooth = factor * factor * (3 - 2 * factor);
+            pull = smooth * -32; // رفع لأعلى
+            glow = smooth;
+          }
+
+          rowPoints.push({
+            x: baseX + wave * 0.35,
+            y: baseY + wave + pull,
+            glow: glow
+          });
+        }
+        grid.push(rowPoints);
+      }
+
+      // رسم الخطوط الأفقية والرأسية
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const p = grid[r][c];
+
+          // خط أفقي لليمين
+          if (c < cols - 1) {
+            const right = grid[r][c + 1];
+            const g = Math.max(p.glow, right.glow);
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(right.x, right.y);
+            ctx.strokeStyle = g > 0.02
+              ? `rgba(10, 184, 236, ${0.08 + g * 0.78})`
+              : 'rgba(10, 184, 236, 0.07)';
+            ctx.lineWidth = 0.8 + g * 1.4;
+            ctx.stroke();
+          }
+
+          // خط رأسي للأسفل
+          if (r < rows - 1) {
+            const down = grid[r + 1][c];
+            const g = Math.max(p.glow, down.glow);
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(down.x, down.y);
+            ctx.strokeStyle = g > 0.02
+              ? `rgba(10, 184, 236, ${0.08 + g * 0.78})`
+              : 'rgba(255, 255, 255, 0.04)';
+            ctx.lineWidth = 0.8 + g * 1.4;
+            ctx.stroke();
+          }
+
+          // نقاط التقاطع المضيئة تحت الماوس
+          if (p.glow > 0.15) {
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 1.5 + p.glow * 2.5, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(150, 235, 255, ${p.glow})`;
+            ctx.fill();
+          }
+        }
+      }
+
+      requestAnimationFrame(render);
+    }
+
+    render();
+  })();
+  </script>
+
+</body>
+</html>

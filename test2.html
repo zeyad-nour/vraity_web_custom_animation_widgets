@@ -1,0 +1,327 @@
+<div id="vss-services-wrapper">
+  <!-- الكارت الزجاجي الطائر اللي بيتبع الماوس ويعرض صور إليمنتور -->
+  <div id="vss-floating-preview">
+    <div class="vss-preview-inner">
+      <img id="vss-preview-img" src="" alt="Service Preview" />
+      <div class="vss-preview-tag">EXPLORE DISCIPLINE ↗</div>
+    </div>
+  </div>
+
+  <!-- قائمة الخدمات السبعة -->
+  <div id="vss-services-list"></div>
+</div>
+
+<style>
+  /* إخفاء ويدجت الصور الخاص بإليمنتور بعد سحب الصور منه */
+  .vss-services-media-source {
+    display: none !important;
+  }
+
+  #vss-services-wrapper {
+    position: relative;
+    width: 100%;
+    font-family: 'Poppins', 'Inter', sans-serif;
+  }
+
+  .vss-service-row {
+    display: grid;
+    grid-template-columns: 70px 1.2fr 1.5fr 60px;
+    align-items: center;
+    gap: 24px;
+    padding: 34px 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    text-decoration: none;
+    color: #ffffff;
+    position: relative;
+    overflow: hidden;
+    transition: background 0.4s cubic-bezier(0.16, 1, 0.3, 1), padding 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    cursor: pointer;
+  }
+
+  .vss-service-row:last-child {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  /* خط ضوئي أزرق بيمتد عند الهوفر */
+  .vss-service-row::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0%;
+    height: 1px;
+    background: linear-gradient(90deg, #0AB8EC, rgba(10, 184, 236, 0.1));
+    transition: width 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .vss-service-row:hover {
+    background: linear-gradient(90deg, rgba(10, 184, 236, 0.07) 0%, rgba(10, 184, 236, 0.01) 100%);
+    padding-left: 34px;
+  }
+
+  .vss-service-row:hover::before {
+    width: 100%;
+  }
+
+  .vss-srv-num {
+    font-size: 13px;
+    font-weight: 600;
+    color: #0AB8EC;
+    letter-spacing: 1.5px;
+    transition: transform 0.35s ease;
+  }
+
+  .vss-service-row:hover .vss-srv-num {
+    transform: translateX(4px);
+  }
+
+  .vss-srv-title {
+    font-size: clamp(24px, 2.6vw, 38px);
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    color: #ffffff;
+    margin: 0;
+    transition: color 0.35s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .vss-service-row:hover .vss-srv-title {
+    color: #0AB8EC;
+    transform: translateX(8px);
+  }
+
+  .vss-srv-desc {
+    font-size: 15px;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.62);
+    margin: 0;
+    max-width: 480px;
+    transition: color 0.35s ease;
+  }
+
+  .vss-service-row:hover .vss-srv-desc {
+    color: rgba(255, 255, 255, 0.92);
+  }
+
+  .vss-srv-arrow {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    justify-self: end;
+    color: #ffffff;
+    font-size: 18px;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .vss-service-row:hover .vss-srv-arrow {
+    background: #0AB8EC;
+    border-color: #0AB8EC;
+    color: #060A0C;
+    transform: rotate(45deg) scale(1.08);
+    box-shadow: 0 0 20px rgba(10, 184, 236, 0.45);
+  }
+
+  /* كارت المعاينة الزجاجي الطائر */
+  #vss-floating-preview {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 310px;
+    height: 205px;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0;
+    transform: translate3d(-50%, -50%, 0) scale(0.82) rotate(-3deg);
+    transition: opacity 0.35s ease, transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  #vss-floating-preview.is-visible {
+    opacity: 1;
+    transform: translate3d(-50%, -50%, 0) scale(1) rotate(0deg);
+  }
+
+  .vss-preview-inner {
+    width: 100%;
+    height: 100%;
+    border-radius: 14px;
+    overflow: hidden;
+    position: relative;
+    background: #0b141a;
+    border: 1px solid rgba(10, 184, 236, 0.45);
+    box-shadow: 0 24px 50px rgba(0, 0, 0, 0.75), 0 0 25px rgba(10, 184, 236, 0.22);
+  }
+
+  #vss-preview-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.6s ease;
+  }
+
+  #vss-floating-preview.is-visible #vss-preview-img {
+    transform: scale(1.05);
+  }
+
+  .vss-preview-tag {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    background: rgba(6, 10, 12, 0.82);
+    backdrop-filter: blur(8px);
+    color: #0AB8EC;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1px solid rgba(10, 184, 236, 0.35);
+  }
+
+  /* التجاوب مع الموبايل والتابلت */
+  @media (max-width: 991px) {
+    .vss-service-row {
+      grid-template-columns: 45px 1fr 42px;
+      padding: 24px 12px;
+    }
+    .vss-srv-desc {
+      grid-column: 2 / 3;
+      margin-top: 6px;
+    }
+    .vss-srv-arrow {
+      grid-row: 1 / 3;
+      grid-column: 3 / 4;
+    }
+    #vss-floating-preview {
+      display: none !important;
+    }
+  }
+</style>
+
+<script>
+(function() {
+  // بيانات الخدمات السبعة (تقدر تعدل النصوص والروابط من هنا)
+  const servicesData = [
+    {
+      num: '01',
+      title: 'Digital Marketing',
+      desc: 'Strategy, content and campaigns designed to keep brands visible and connected.',
+      link: '/services/digital-marketing'
+    },
+    {
+      num: '02',
+      title: 'Social Media Management',
+      desc: 'Creative thinking and considered management that build meaningful audience relationships.',
+      link: '/services/social-media'
+    },
+    {
+      num: '03',
+      title: 'Branding & Visual Identity',
+      desc: 'Distinctive brand systems, typography and visual languages built to stand apart.',
+      link: '/services/branding'
+    },
+    {
+      num: '04',
+      title: 'Web Design & Development',
+      desc: 'High-performance digital experiences engineered with precision and modern architecture.',
+      link: '/services/web-development'
+    },
+    {
+      num: '05',
+      title: 'Systems & Smart Solutions',
+      desc: 'Custom software, ERP integrations and automated workflows tailored to scale operations.',
+      link: '/services/systems'
+    },
+    {
+      num: '06',
+      title: 'Media Production',
+      desc: 'Commercial photography, motion graphics and visual storytelling from concept to screen.',
+      link: '/services/production'
+    },
+    {
+      num: '07',
+      title: 'Offline & Print Solutions',
+      desc: 'Tactile corporate collateral, packaging and exhibition presence with sharp execution.',
+      link: '/services/offline-print'
+    }
+  ];
+
+  const listContainer = document.getElementById('vss-services-list');
+  const previewBox = document.getElementById('vss-floating-preview');
+  const previewImg = document.getElementById('vss-preview-img');
+
+  if (!listContainer) return;
+
+  // سحب الصور أوتوماتيك من ويدجت إليمنتور صاحب كلاس vss-services-media-source
+  function getElementorImages() {
+    const sourceEl = document.querySelector('.vss-services-media-source');
+    if (!sourceEl) return [];
+    const imgs = sourceEl.querySelectorAll('img');
+    return Array.from(imgs).map(img => img.getAttribute('data-src') || img.src);
+  }
+
+  function buildList() {
+    const elImages = getElementorImages();
+    listContainer.innerHTML = '';
+
+    servicesData.forEach((srv, idx) => {
+      const imgUrl = elImages[idx] || '';
+      const row = document.createElement('a');
+      row.href = srv.link;
+      row.className = 'vss-service-row';
+      row.innerHTML = `
+        <span class="vss-srv-num">${srv.num}</span>
+        <h3 class="vss-srv-title">${srv.title}</h3>
+        <p class="vss-srv-desc">${srv.desc}</p>
+        <span class="vss-srv-arrow">↗</span>
+      `;
+
+      row.addEventListener('mouseenter', () => {
+        if (imgUrl && previewBox && previewImg) {
+          previewImg.src = imgUrl;
+          previewBox.classList.add('is-visible');
+        }
+      });
+
+      row.addEventListener('mouseleave', () => {
+        if (previewBox) {
+          previewBox.classList.remove('is-visible');
+        }
+      });
+
+      listContainer.appendChild(row);
+    });
+  }
+
+  // تشغيل البناء بعد تحميل الصفحة لضمان جاهزية صور إليمنتور
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', buildList);
+  } else {
+    buildList();
+  }
+  setTimeout(buildList, 800);
+
+  // تحريك كارت المعاينة بفيزياء Lerp ناعمة مع الماوس
+  let targetX = 0, targetY = 0, currentX = 0, currentY = 0;
+
+  window.addEventListener('mousemove', (e) => {
+    targetX = e.clientX + 190; // إزاحة بسيطة يمين الماوس عشان ميغطيش الكلام
+    targetY = e.clientY - 20;
+  }, { passive: true });
+
+  function animatePreview() {
+    currentX += (targetX - currentX) * 0.12;
+    currentY += (targetY - currentY) * 0.12;
+
+    if (previewBox) {
+      previewBox.style.left = `${currentX}px`;
+      previewBox.style.top = `${currentY}px`;
+    }
+    requestAnimationFrame(animatePreview);
+  }
+  animatePreview();
+})();
+</script>
